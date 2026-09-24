@@ -13,20 +13,48 @@ variable "zone" {
   default = "asia-south1-a"
 }
 
-variable "raghavi_email" {
-  type        = string
-  description = "Super admin email"
-  default     = "mekalaraghavi@gmail.com"
+# --- GCP Workforce Access Personas ---
+
+variable "platform_admins" {
+  description = "Super admins / emergency incident recovery"
+  type        = list(string)
+  default     = [
+    "mekalaraghavi@gmail.com"
+  ]
 }
 
-variable "vani_email" {
-  type        = string
-  description = "Developer email"
-  default     = "vanimekala2003@gmail.com"
+variable "devops_engineers" {
+  description = "DevOps / platform delivery engineers"
+  type        = list(string)
+  default     = []
 }
 
-variable "tester_email" {
-  type        = string
-  description = "Tester email"
-  default     = "lakshmiraj@thewify.com"
+variable "developers" {
+  description = "Application & engine developers (VM SSH and dev access)"
+  type        = list(string)
+  default     = [
+    "vanimekala2003@gmail.com"
+  ]
+}
+
+variable "testers" {
+  description = "Testers (Read-only on test VM and data bucket)"
+  type        = list(string)
+  default     = [
+    "urnakam@gmail.com",
+    "lakshmiraj@thewify.com",
+    "raghavimekala@gmail.com"
+  ]
+}
+
+variable "security_auditors" {
+  description = "Security auditors (Read-only across IAM and logs)"
+  type        = list(string)
+  default     = []
+}
+
+variable "support_users" {
+  description = "Support personnel (Monitoring and health check visibility)"
+  type        = list(string)
+  default     = []
 }

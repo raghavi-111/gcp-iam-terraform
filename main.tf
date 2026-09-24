@@ -6,6 +6,10 @@ terraform {
       version = "~> 5.0"
     }
   }
+  backend "gcs" {
+    bucket = "flash-cache-508914-u3-tfstate"
+    prefix = "terraform/state"
+  }
 }
 
 provider "google" {
@@ -13,7 +17,7 @@ provider "google" {
   region  = var.region
 }
 
-# 1. Cloud Storage Bucket (Tester can view, cannot delete/write)
+# 1. Cloud Storage Bucket
 resource "google_storage_bucket" "app_bucket" {
   name                        = "${var.project_id}-task-bucket"
   location                    = var.region
@@ -36,27 +40,25 @@ resource "google_compute_instance" "app_vm" {
 
   network_interface {
     network = "default"
-    access_config {} # Public IP
+    access_config {}
   }
 
   metadata = {
     enable-oslogin = "TRUE"
   }
 
-  # Build / Startup script to serve your application
   metadata_startup_script = <<-EOF
     #!/bin/bash
     apt-get update -y
     apt-get install -y nginx git
     systemctl enable nginx
     systemctl start nginx
-    echo "<h1>App Deployed Successfully on flash-cache-508914-u3</h1>" > /var/www/html/index.html
+    echo "<h1>Black River App - Environment Online</h1>" > /var/www/html/index.html
   EOF
 
   tags = ["http-server"]
 }
 
-# Allow HTTP Traffic to VM
 resource "google_compute_firewall" "allow_http" {
   name    = "allow-http-service"
   network = "default"
@@ -70,37 +72,60 @@ resource "google_compute_firewall" "allow_http" {
   target_tags   = ["http-server"]
 }
 
-# ----------------- 3. IAM ROLES PROVISIONING -----------------
+# ==============================================================================
 
-# Raghavi -> Super Admin (Owner of the GCP project)
-resource "google_project_iam_member" "super_admin_raghavi" {
-  project = var.project_id
-  role    = "roles/owner"
-  member  = "user:${var.raghavi_email}"
+# ==============================================================================
+
+# --- Platform Administrators (Full Owner privileges) ---
+resource "google_project_iam_member" "platform_admins" {
+  for_each = toset(var.platform_admins)
+  project  = var.project_id
+  role     = "roles/owner"
+  member   = "user:${each.value}"
 }
 
-# Developer (Vani) -> Access to VM to check files, edit, and manage compute
+# --- Developers (VM Instance Admin + OS Login) ---
 resource "google_project_iam_member" "dev_compute_admin" {
-  project = var.project_id
-  role    = "roles/compute.instanceAdmin.v1"
-  member  = "user:${var.vani_email}"
+  for_each = toset(var.developers)
+  project  = var.project_id
+  role     = "roles/compute.instanceAdmin.v1"
+  member   = "user:${each.value}"
 }
 
 resource "google_project_iam_member" "dev_oslogin" {
-  project = var.project_id
-  role    = "roles/compute.osAdminLogin"
-  member  = "user:${var.vani_email}"
+  for_each = toset(var.developers)
+  project  = var.project_id
+  role     = "roles/compute.osAdminLogin"
+  member   = "user:${each.value}"
 }
 
-# Tester -> Read-only Viewer on VM and Bucket
+# --- Testers (Compute Viewer + Bucket Object Viewer) ---
 resource "google_project_iam_member" "tester_vm_viewer" {
-  project = var.project_id
-  role    = "roles/compute.viewer"
-  member  = "user:${var.tester_email}"
+  for_each = toset(var.testers)
+  project  = var.project_id
+  role     = "roles/compute.viewer"
+  member   = "user:${each.value}"
 }
 
 resource "google_storage_bucket_iam_member" "tester_bucket_viewer" {
-  bucket = google_storage_bucket.app_bucket.name
-  role   = "roles/storage.objectViewer"
-  member = "user:${var.tester_email}"
+  for_each = toset(var.testers)
+  bucket   = google_storage_bucket.app_bucket.name
+  role     = "roles/storage.objectViewer"
+  member   = "user:${each.value}"
+}
+
+# --- Security Auditors (Read-only on IAM, Logs, and Configs) ---
+resource "google_project_iam_member" "security_auditors" {
+  for_each = toset(var.security_auditors)
+  project  = var.project_id
+  role     = "roles/iam.securityReviewer"
+  member   = "user:${each.value}"
+}
+
+# --- Support Users (Dashboard and Monitoring Viewers) ---
+resource "google_project_iam_member" "support_monitoring" {
+  for_each = toset(var.support_users)
+  project  = var.project_id
+  role     = "roles/monitoring.viewer"
+  member   = "user:${each.value}"
 }
