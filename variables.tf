@@ -26,7 +26,9 @@ variable "platform_admins" {
 variable "devops_engineers" {
   description = "DevOps / platform delivery engineers"
   type        = list(string)
-  default     = []
+  default     = [
+    "lakshmiraj@thewify.com"
+  ]
 }
 
 variable "developers" {
@@ -41,8 +43,7 @@ variable "testers" {
   description = "Testers (Read-only on test VM and data bucket)"
   type        = list(string)
   default     = [
-    "urnakam@gmail.com",
-    "lakshmiraj@thewify.com",
+  
     "raghavimekala@gmail.com"
   ]
 }

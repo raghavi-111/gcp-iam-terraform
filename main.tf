@@ -80,7 +80,7 @@ resource "google_compute_firewall" "allow_http" {
 resource "google_project_iam_member" "platform_admins" {
   for_each = toset(var.platform_admins)
   project  = var.project_id
-  role     = "roles/owner"
+  role     = "roles/editor"
   member   = "user:${each.value}"
 }
 
@@ -127,5 +127,34 @@ resource "google_project_iam_member" "support_monitoring" {
   for_each = toset(var.support_users)
   project  = var.project_id
   role     = "roles/monitoring.viewer"
+  member   = "user:${each.value}"
+}
+
+
+# ==============================================================================
+# DevOps Engineers (Create VMs, Manage Servers, Trigger Cloud Build)
+# ==============================================================================
+
+# 1. Full VM instance lifecycle (Create, start, stop, delete, modify VMs)
+resource "google_project_iam_member" "devops_compute_admin" {
+  for_each = toset(var.devops_engineers)
+  project  = var.project_id
+  role     = "roles/compute.instanceAdmin.v1"
+  member   = "user:${each.value}"
+}
+
+# 2. Service Account User (Mandatory to attach service accounts when creating new VMs)
+resource "google_project_iam_member" "devops_sa_user" {
+  for_each = toset(var.devops_engineers)
+  project  = var.project_id
+  role     = "roles/iam.serviceAccountUser"
+  member   = "user:${each.value}"
+}
+
+# 3. Cloud Build Editor (Create, run, and review builds)
+resource "google_project_iam_member" "devops_cloud_build" {
+  for_each = toset(var.devops_engineers)
+  project  = var.project_id
+  role     = "roles/cloudbuild.builds.editor"
   member   = "user:${each.value}"
 }
